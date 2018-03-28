@@ -1,0 +1,111 @@
+
+
+import android.app.Activity;
+import android.graphics.Rect;
+import android.os.Build;
+import android.util.Log;
+import android.view.View;
+import android.view.ViewTreeObserver;
+
+/**
+*simple and powerful Keyboard show/hidden listener
+ * Created by zhl_pro on 2018/3/27.
+ */
+
+public class KeyboardChangeListener implements ViewTreeObserver.OnGlobalLayoutListener {
+    private static final String TAG = "ListenerHandler";
+    private View mContentView;
+    private KeyBoardListener mKeyBoardListen;
+    int rootViewVisibleHeight;//record rootview height 
+
+    public interface KeyBoardListener {
+        /**
+         * call back
+         *
+         * @param isShow         true is show else hidden
+         * @param keyboardHeight keyboard height
+         */
+        void onKeyboardChange(boolean isShow, int keyboardHeight);
+    }
+
+    public void setKeyBoardListener(KeyBoardListener keyBoardListen) {
+        this.mKeyBoardListen = keyBoardListen;
+    }
+
+    public KeyboardChangeListener(Activity contextObj) {
+        if (contextObj == null) {
+            Log.i(TAG, "contextObj is null");
+            return;
+        }
+        mContentView = findContentView(contextObj);
+        if (mContentView != null) {
+            addContentTreeObserver();
+        }
+    }
+
+    public KeyboardChangeListener(View rootView) {
+
+        mContentView = rootView;
+
+        if (mContentView != null) {
+            addContentTreeObserver();
+        }
+
+
+    }
+
+    private View findContentView(Activity contextObj) {
+//        return contextObj.findViewById(android.R.id.content);
+        return contextObj.getWindow().getDecorView();
+    }
+
+    private void addContentTreeObserver() {
+        mContentView.getViewTreeObserver().addOnGlobalLayoutListener(this);
+    }
+
+    @Override
+    public void onGlobalLayout() {
+
+        Rect r = new Rect();
+        mContentView.getWindowVisibleDisplayFrame(r);
+
+        int visibleHeight = r.height();
+        System.out.println("" + visibleHeight);
+
+        if (rootViewVisibleHeight == 0) {
+            rootViewVisibleHeight = visibleHeight;
+            return;
+        }
+
+        //根视图显示高度没有变化，可以看作软键盘显示／隐藏状态没有改变
+        if (rootViewVisibleHeight == visibleHeight) {
+            return;
+        }
+
+        //根视图显示高度变小超过200，可以看作软键盘显示了
+        if (rootViewVisibleHeight - visibleHeight > 200) {
+            rootViewVisibleHeight = visibleHeight;
+            if (mKeyBoardListen != null)
+                mKeyBoardListen.onKeyboardChange(true, rootViewVisibleHeight - visibleHeight);
+            return;
+        }
+
+        //根视图显示高度变大超过200，可以看作软键盘隐藏了
+        if (visibleHeight - rootViewVisibleHeight > 200) {
+            if (mKeyBoardListen != null)
+                mKeyBoardListen.onKeyboardChange(false, visibleHeight - rootViewVisibleHeight);
+            rootViewVisibleHeight = visibleHeight;
+            return;
+        }
+
+    }
+
+
+    public void destroy() {
+        if (mContentView != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                mContentView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+            }
+        }
+    }
+}
